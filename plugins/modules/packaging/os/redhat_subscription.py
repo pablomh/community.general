@@ -96,10 +96,14 @@ options:
         description:
             - Organization ID to use in conjunction with activationkey
         type: str
-    environment:
+    lifecycle_environment:
         description:
-            - Register with a specific environment in the destination org. Used with Red Hat Satellite 6.x or Katello
+            - |
+              Register with a specific lifecyle environment in the destination org. Used with Red Hat Satellite 6.x
+              or Katello
+            - Added in favor of deprecated environment in >5.5.0
         type: str
+        aliases: [environment]
     pool:
         description:
             - |
@@ -230,12 +234,12 @@ EXAMPLES = '''
     org_id: 222333444
     pool: '^Red Hat Enterprise Server$'
 
-- name: Register as user credentials into given environment (against Red Hat Satellite 6.x), and auto-subscribe.
+- name: Register as user credentials into given lifecycle environment (against Red Hat Satellite 6.x), and auto-subscribe.
   community.general.redhat_subscription:
     state: present
     username: joe_user
     password: somepass
-    environment: Library
+    environment_environment: Library
     auto_attach: true
 
 - name: Register as user (joe_user) with password (somepass) and a specific release
@@ -394,9 +398,10 @@ class Rhsm(RegistrationBase):
             return False
 
     def register(self, username, password, auto_attach, activationkey, org_id,
-                 consumer_type, consumer_name, consumer_id, force_register, environment,
-                 rhsm_baseurl, server_insecure, server_hostname, server_proxy_hostname,
-                 server_proxy_port, server_proxy_user, server_proxy_password, release):
+                 consumer_type, consumer_name, consumer_id, force_register,
+                 lifecycle_environment, rhsm_baseurl, server_insecure, server_hostname,
+                 server_proxy_hostname, server_proxy_port, server_proxy_user,
+                 server_proxy_password, release):
         '''
             Register the current system to the provided RHSM or Sat6 server
             Raises:
@@ -444,8 +449,8 @@ class Rhsm(RegistrationBase):
                 args.extend(['--name', consumer_name])
             if consumer_id:
                 args.extend(['--consumerid', consumer_id])
-            if environment:
-                args.extend(['--environment', environment])
+            if lifecycle_environment:
+                args.extend(['--environment', lifecycle_environment])
 
         if release:
             args.extend(['--release', release])
@@ -801,7 +806,7 @@ def main():
             'auto_attach': {'aliases': ['autosubscribe'], 'type': 'bool'},
             'activationkey': {'no_log': True},
             'org_id': {},
-            'environment': {},
+            'lifecycle_environment': {'aliases': ['environment']},
             'pool': {'default': '^$'},
             'pool_ids': {'default': [], 'type': 'list', 'elements': 'raw'},
             'consumer_type': {},
@@ -829,7 +834,7 @@ def main():
                            ['server_proxy_user', 'server_proxy_password']],
         mutually_exclusive=[['activationkey', 'username'],
                             ['activationkey', 'consumer_id'],
-                            ['activationkey', 'environment'],
+                            ['activationkey', 'lifecycle_environment'],
                             ['activationkey', 'auto_attach'],
                             ['pool', 'pool_ids']],
         required_if=[['state', 'present', ['username', 'activationkey'], True]],
@@ -850,7 +855,7 @@ def main():
     org_id = module.params['org_id']
     if activationkey and not org_id:
         module.fail_json(msg='org_id is required when using activationkey')
-    environment = module.params['environment']
+    lifecycle_environment = module.params['lifecycle_environment']
     pool = module.params['pool']
     pool_ids = {}
     for value in module.params['pool_ids']:
@@ -913,7 +918,7 @@ def main():
                 rhsm.configure(**module.params)
                 rhsm.register(username, password, auto_attach, activationkey, org_id,
                               consumer_type, consumer_name, consumer_id, force_register,
-                              environment, rhsm_baseurl, server_insecure, server_hostname,
+                              lifecycle_environment, rhsm_baseurl, server_insecure, server_hostname,
                               server_proxy_hostname, server_proxy_port, server_proxy_user, server_proxy_password, release)
                 if syspurpose and 'sync' in syspurpose and syspurpose['sync'] is True:
                     rhsm.sync_syspurpose()
